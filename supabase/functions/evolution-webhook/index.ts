@@ -42,17 +42,51 @@ Deno.serve(async (req) => {
     .select("organization_id,status,instance_name")
     .eq("provider", "evolution")
     .eq("instance_name", instance)
-    .eq("status", "connected")
     .maybeSingle();
 
   if (integrationError) return Response.json({ ok: false, error: "integration_lookup_failed" }, { status: 500, headers: corsHeaders });
-  if (!integration) return Response.json({ ok: false, error: "unknown_or_disconnected_instance" }, { status: 403, headers: corsHeaders });
+  if (!integration) return Response.json({ ok: false, error: "unknown_instance" }, { status: 403, headers: corsHeaders });
+
+  const { data: credentials } = await db
+    .from("integration_credentials")
+    .select("instance_api_key")
+    .eq("organization_id", integration.organization_id)
+    .eq("provider", "evolution")
+    .maybeSingle();
+
+  if (credentials?.instance_api_key) {
+    const providedSecret = req.headers.get("x-nexo-webhook-secret");
+    if (providedSecret !== credentials.instance_api_key) {
+      return Response.json({ ok: false, error: "invalid_webhook_signature" }, { status: 401, headers: corsHeaders });
+    }
+  }
+
+  const data = payload.data && typeof payload.data === "object" ? payload.data : {};
+
+  if (event && event.toLowerCase().includes("connection")) {
+    const state = typeof data.state === "string"
+      ? data.state
+      : (data.instance && typeof data.instance === "object" && typeof data.instance.state === "string" ? data.instance.state : "unknown");
+
+    await db.from("integration_connections").update({
+      status: state === "open" ? "connected" : "disconnected",
+      last_checked_at: new Date().toISOString(),
+      config_public: { state }
+    }).eq("organization_id", integration.organization_id).eq("provider", "evolution");
+
+    await db.from("audit_logs").insert({
+      organization_id: integration.organization_id,
+      actor_type: "integration",
+      action: "whatsapp.connection.update",
+      payload: { event, instance, state }
+    });
+
+    return Response.json({ ok: true, connection_updated: true, state }, { headers: corsHeaders });
+  }
 
   if (event && !event.toLowerCase().includes("messages")) {
     return Response.json({ ok: true, ignored: true, reason: "event_not_used_yet" }, { headers: corsHeaders });
   }
-
-  const data = payload.data && typeof payload.data === "object" ? payload.data : {};
   const key = data.key && typeof data.key === "object" ? data.key : {};
   const remoteJid = typeof key.remoteJid === "string" ? key.remoteJid : null;
   const externalMessageId = typeof key.id === "string" ? key.id : null;
