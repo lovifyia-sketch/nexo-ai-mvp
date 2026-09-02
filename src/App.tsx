@@ -37,7 +37,7 @@ function Auth() {
 
   return <div className="authShell">
     <div className="authCard">
-      <div className="brand authBrand"><div className="brandMark">N</div><div><strong>NEXO AI</strong><span>MVP 0.2</span></div></div>
+      <div className="brand authBrand"><div className="brandMark">N</div><div><strong>NEXO</strong><span>INTELIGÊNCIA OPERACIONAL</span></div></div>
       <p className="eyebrow">CENTRAL OPERACIONAL</p>
       <h1>{mode === 'login' ? 'Entre no NEXO' : 'Crie sua conta'}</h1>
       <p className="muted">Ao entrar, o NEXO verifica automaticamente sua integração do WhatsApp.</p>
@@ -179,7 +179,7 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand"><div className="brandMark">N</div><div><strong>NEXO AI</strong><span>MVP 0.2</span></div></div>
+        <div className="brand"><div className="brandMark">N</div><div><strong>NEXO</strong><span>INTELIGÊNCIA OPERACIONAL</span></div></div>
         <nav>
           <button className={activeView==='overview'?'active':''} onClick={()=>setActiveView('overview')}><Activity size={18}/>Visão geral</button>
           <button className={activeView==='training'?'active':''} onClick={()=>setActiveView('training')}><Brain size={18}/>Treinar NEXO</button>
