@@ -58,12 +58,14 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [booting, setBooting] = useState(true)
   const [showConnect, setShowConnect] = useState(false)
+  const [showMobileMore, setShowMobileMore] = useState(false)
   const [apiUrl, setApiUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [connecting, setConnecting] = useState(false)
   const [wa, setWa] = useState<ConnectResult>({ state: 'not_configured', connected: false })
   const [connectError, setConnectError] = useState('')
   const [activeView, setActiveView] = useState<'overview'|'training'>('overview')
+  const [mobileNavSection, setMobileNavSection] = useState<'home'|'customers'|'products'|'whatsapp'>('home')
   const [assistantInput,setAssistantInput]=useState('')
   const [assistantReply,setAssistantReply]=useState('')
   const [assistantLoading,setAssistantLoading]=useState(false)
@@ -140,11 +142,32 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [session, wa.connected, wa.instanceName, wa.state])
 
-  function openAssistant() {
+  function goMobile(section: 'home'|'customers'|'products') {
+    setShowMobileMore(false)
     setActiveView('overview')
+    setMobileNavSection(section)
+    window.requestAnimationFrame(()=>{
+      const target = section === 'home'
+        ? document.querySelector('main')
+        : document.getElementById(section === 'customers' ? 'customers-card' : 'offers-card')
+      target?.scrollIntoView({behavior:'smooth',block:section === 'home' ? 'start' : 'center'})
+    })
+  }
+
+  function openAssistant() {
+    setShowMobileMore(false)
+    setActiveView('overview')
+    setMobileNavSection('home')
     window.requestAnimationFrame(()=>{
       document.getElementById('assistant-panel')?.scrollIntoView({behavior:'smooth',block:'start'})
     })
+  }
+
+  function openTraining() {
+    setShowMobileMore(false)
+    setActiveView('training')
+    setMobileNavSection('home')
+    window.scrollTo({top:0,behavior:'smooth'})
   }
 
   async function askAssistant(e: FormEvent) {
@@ -188,8 +211,8 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand"><div className="brandMark">N</div><div><strong>NEXO</strong><span>INTELIGÊNCIA OPERACIONAL</span></div></div>
         <nav>
-          <button className={activeView==='overview'?'active':''} onClick={()=>setActiveView('overview')}><Activity size={18}/>Visão geral</button>
-          <button className={activeView==='training'?'active':''} onClick={()=>setActiveView('training')}><Brain size={18}/>Treinar NEXO</button>
+          <button className={activeView==='overview'?'active':''} onClick={()=>{setActiveView('overview');setMobileNavSection('home')}}><Activity size={18}/>Visão geral</button>
+          <button className={activeView==='training'?'active':''} onClick={openTraining}><Brain size={18}/>Treinar NEXO</button>
           <button><Users size={18}/>Clientes</button>
           <button><Boxes size={18}/>Produtos e serviços</button>
           <button><MessageCircle size={18}/>WhatsApp</button>
@@ -214,11 +237,11 @@ export default function App() {
         {activeView === 'training' ? <TrainingPanel /> : <>
         <section className="grid">
           {[
-            {label:'Clientes ativos',value:dashboardMetrics.customers,icon:Users},
-            {label:'Ofertas ativas',value:dashboardMetrics.offers,icon:Boxes},
-            {label:'Vencimentos em 7 dias',value:dashboardMetrics.renewals,icon:RefreshCcw},
-            {label:'Conversas hoje',value:dashboardMetrics.conversations,icon:MessageCircle},
-          ].map(({label,value,icon:Icon}) => <article className="card" key={label}><div className="cardIcon"><Icon size={20}/></div><div><span>{label}</span><strong>{value}</strong></div></article>)}
+            {label:'Clientes ativos',value:dashboardMetrics.customers,icon:Users,id:'customers-card'},
+            {label:'Ofertas ativas',value:dashboardMetrics.offers,icon:Boxes,id:'offers-card'},
+            {label:'Vencimentos em 7 dias',value:dashboardMetrics.renewals,icon:RefreshCcw,id:'renewals-card'},
+            {label:'Conversas hoje',value:dashboardMetrics.conversations,icon:MessageCircle,id:'conversations-card'},
+          ].map(({label,value,icon:Icon,id}) => <article className="card" id={id} key={label}><div className="cardIcon"><Icon size={20}/></div><div><span>{label}</span><strong>{value}</strong></div></article>)}
         </section>
 
         <section className="two">
@@ -248,19 +271,39 @@ export default function App() {
       </main>
 
       <nav className="mobileNav" aria-label="Navegação principal">
-        <button className={activeView==='overview'?'active':''} onClick={()=>{setActiveView('overview');window.scrollTo({top:0,behavior:'smooth'})}}>
+        <button className={activeView==='overview' && mobileNavSection==='home' && !showMobileMore?'active':''} onClick={()=>goMobile('home')}>
           <Activity size={21}/><span>Início</span>
         </button>
-        <button className={activeView==='training'?'active':''} onClick={()=>{setActiveView('training');window.scrollTo({top:0,behavior:'smooth'})}}>
-          <Brain size={21}/><span>Treinar</span>
+        <button className={activeView==='overview' && mobileNavSection==='customers'?'active':''} onClick={()=>goMobile('customers')}>
+          <Users size={21}/><span>Clientes</span>
         </button>
-        <button onClick={openAssistant}>
-          <Bot size={21}/><span>Assistente</span>
+        <button className={activeView==='overview' && mobileNavSection==='products'?'active':''} onClick={()=>goMobile('products')}>
+          <Boxes size={21}/><span>Produtos</span>
         </button>
-        <button className={wa.connected?'connected':''} onClick={()=>setShowConnect(true)}>
+        <button className={mobileNavSection==='whatsapp'?'active':''} onClick={()=>{setMobileNavSection('whatsapp');setShowConnect(true)}}>
           {wa.connected?<Wifi size={21}/>:<MessageCircle size={21}/>}<span>WhatsApp</span>
         </button>
+        <button className={showMobileMore || activeView==='training'?'active':''} onClick={()=>setShowMobileMore(true)}>
+          <Settings2 size={21}/><span>Mais</span>
+        </button>
       </nav>
+
+      {showMobileMore && <div className="mobileMoreBackdrop" onClick={()=>setShowMobileMore(false)}>
+        <div className="mobileMoreSheet" onClick={e=>e.stopPropagation()}>
+          <div className="mobileMoreHandle"></div>
+          <div className="mobileMoreHeader">
+            <div><p className="eyebrow">NAVEGAÇÃO</p><h2>Mais opções</h2></div>
+            <button className="mobileMoreClose" onClick={()=>setShowMobileMore(false)} aria-label="Fechar menu"><X size={18}/></button>
+          </div>
+          <div className="mobileMoreGrid">
+            <button onClick={openTraining}><Brain size={20}/><div><strong>Treinar NEXO</strong><span>Ensine o nicho e as regras da empresa</span></div></button>
+            <button onClick={openAssistant}><Bot size={20}/><div><strong>Assistente</strong><span>Consulte e prepare ações</span></div></button>
+            <button onClick={()=>{setShowMobileMore(false);setMobileNavSection('whatsapp');setShowConnect(true)}}><MessageCircle size={20}/><div><strong>WhatsApp</strong><span>Conexão e status da integração</span></div></button>
+            <button onClick={()=>{setShowMobileMore(false);setShowConnect(true)}}><Settings2 size={20}/><div><strong>Integração</strong><span>Configurações da Evolution API</span></div></button>
+            <button className="danger" onClick={()=>supabase?.auth.signOut()}><LogOut size={20}/><div><strong>Sair</strong><span>Encerrar esta sessão</span></div></button>
+          </div>
+        </div>
+      </div>}
 
       {showConnect && <div className="modalBackdrop">
         <div className="modal">
