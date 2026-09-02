@@ -14,13 +14,6 @@ type ConnectResult = {
   pairingCode?: string | null
 }
 
-const cards = [
-  { label: 'Clientes ativos', value: '0', icon: Users },
-  { label: 'Produtos', value: '0', icon: Boxes },
-  { label: 'Renovações próximas', value: '0', icon: RefreshCcw },
-  { label: 'Conversas hoje', value: '0', icon: MessageCircle },
-]
-
 function Auth() {
   const [mode, setMode] = useState<'login'|'signup'>('login')
   const [email, setEmail] = useState('')
@@ -74,6 +67,7 @@ export default function App() {
   const [assistantInput,setAssistantInput]=useState('')
   const [assistantReply,setAssistantReply]=useState('')
   const [assistantLoading,setAssistantLoading]=useState(false)
+  const [dashboardMetrics,setDashboardMetrics]=useState({customers:0,offers:0,renewals:0,conversations:0})
 
   useEffect(() => {
     if (!supabase) { setBooting(false); return }
@@ -91,6 +85,29 @@ export default function App() {
     if (error) throw error
     return data as ConnectResult
   }
+
+  useEffect(() => {
+    if(!session || !supabase) return
+    let cancelled=false
+    ;(async()=>{
+      const now=new Date()
+      const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString()
+      const inSeven=new Date(Date.now()+7*86400000).toISOString()
+      const [customers,offers,renewals,conversations]=await Promise.all([
+        supabase.from('customers').select('id',{count:'exact',head:true}).eq('status','active'),
+        supabase.from('products').select('id',{count:'exact',head:true}).eq('active',true),
+        supabase.from('subscriptions').select('id',{count:'exact',head:true}).in('status',['active','trial','past_due']).gte('expires_at',new Date().toISOString()).lte('expires_at',inSeven),
+        supabase.from('conversations').select('id',{count:'exact',head:true}).gte('last_message_at',todayStart),
+      ])
+      if(!cancelled) setDashboardMetrics({
+        customers:customers.count||0,
+        offers:offers.count||0,
+        renewals:renewals.count||0,
+        conversations:conversations.count||0,
+      })
+    })()
+    return()=>{cancelled=true}
+  },[session?.user.id])
 
   useEffect(() => {
     if (!session) return
@@ -189,7 +206,12 @@ export default function App() {
 
         {activeView === 'training' ? <TrainingPanel /> : <>
         <section className="grid">
-          {cards.map(({label,value,icon:Icon}) => <article className="card" key={label}><div className="cardIcon"><Icon size={20}/></div><div><span>{label}</span><strong>{value}</strong></div></article>)}
+          {[
+            {label:'Clientes ativos',value:dashboardMetrics.customers,icon:Users},
+            {label:'Ofertas ativas',value:dashboardMetrics.offers,icon:Boxes},
+            {label:'Vencimentos em 7 dias',value:dashboardMetrics.renewals,icon:RefreshCcw},
+            {label:'Conversas hoje',value:dashboardMetrics.conversations,icon:MessageCircle},
+          ].map(({label,value,icon:Icon}) => <article className="card" key={label}><div className="cardIcon"><Icon size={20}/></div><div><span>{label}</span><strong>{value}</strong></div></article>)}
         </section>
 
         <section className="two">
