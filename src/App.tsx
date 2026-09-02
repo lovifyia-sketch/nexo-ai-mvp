@@ -140,6 +140,13 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [session, wa.connected, wa.instanceName, wa.state])
 
+  function openAssistant() {
+    setActiveView('overview')
+    window.requestAnimationFrame(()=>{
+      document.getElementById('assistant-panel')?.scrollIntoView({behavior:'smooth',block:'start'})
+    })
+  }
+
   async function askAssistant(e: FormEvent) {
     e.preventDefault()
     if(!supabase || !assistantInput.trim()) return
@@ -196,7 +203,7 @@ export default function App() {
       </aside>
 
       <main>
-        <header>
+        <header className="appHeader">
           <div><p className="eyebrow">CENTRAL OPERACIONAL</p><h1>Boa noite 👋</h1><p>Seu funcionário digital começa aqui.</p></div>
           <button className={wa.connected ? 'connectionBadge connected' : 'connectionBadge'} onClick={()=>setShowConnect(true)}>
             {wa.connected ? <Wifi size={16}/> : <WifiOff size={16}/>}
@@ -215,7 +222,7 @@ export default function App() {
         </section>
 
         <section className="two">
-          <article className="panel assistant">
+          <article className="panel assistant" id="assistant-panel">
             <div className="panelTitle"><div><Bot size={20}/><strong>Assistente NEXO</strong></div><span>Ativo</span></div>
             <div className="heroMessage"><h2>O que você quer fazer hoje?</h2><p>Converse naturalmente com o NEXO para consultar seu negócio ou preparar ações.</p>{assistantReply && <div className="assistantReply">{assistantReply}</div>}</div>
             <form className="composer" onSubmit={askAssistant}><input value={assistantInput} onChange={e=>setAssistantInput(e.target.value)} placeholder="Ex.: Mostre meus produtos e serviços" /><button disabled={assistantLoading || !assistantInput.trim()}>{assistantLoading?'...':'Enviar'}</button></form>
@@ -239,6 +246,21 @@ export default function App() {
         </section>
         </>}
       </main>
+
+      <nav className="mobileNav" aria-label="Navegação principal">
+        <button className={activeView==='overview'?'active':''} onClick={()=>{setActiveView('overview');window.scrollTo({top:0,behavior:'smooth'})}}>
+          <Activity size={21}/><span>Início</span>
+        </button>
+        <button className={activeView==='training'?'active':''} onClick={()=>{setActiveView('training');window.scrollTo({top:0,behavior:'smooth'})}}>
+          <Brain size={21}/><span>Treinar</span>
+        </button>
+        <button onClick={openAssistant}>
+          <Bot size={21}/><span>Assistente</span>
+        </button>
+        <button className={wa.connected?'connected':''} onClick={()=>setShowConnect(true)}>
+          {wa.connected?<Wifi size={21}/>:<MessageCircle size={21}/>}<span>WhatsApp</span>
+        </button>
+      </nav>
 
       {showConnect && <div className="modalBackdrop">
         <div className="modal">
