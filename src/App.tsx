@@ -71,6 +71,9 @@ export default function App() {
   const [wa, setWa] = useState<ConnectResult>({ state: 'not_configured', connected: false })
   const [connectError, setConnectError] = useState('')
   const [activeView, setActiveView] = useState<'overview'|'training'>('overview')
+  const [assistantInput,setAssistantInput]=useState('')
+  const [assistantReply,setAssistantReply]=useState('')
+  const [assistantLoading,setAssistantLoading]=useState(false)
 
   useEffect(() => {
     if (!supabase) { setBooting(false); return }
@@ -119,6 +122,21 @@ export default function App() {
     }, 4000)
     return () => window.clearInterval(timer)
   }, [session, wa.connected, wa.instanceName, wa.state])
+
+  async function askAssistant(e: FormEvent) {
+    e.preventDefault()
+    if(!supabase || !assistantInput.trim()) return
+    setAssistantLoading(true)
+    setAssistantReply('')
+    const {data,error}=await supabase.functions.invoke('nexo-assistant',{body:{message:assistantInput.trim()}})
+    setAssistantLoading(false)
+    if(error || !data?.ok){
+      setAssistantReply(data?.error||error?.message||'Não foi possível consultar o NEXO agora.')
+      return
+    }
+    setAssistantReply(data.message||'Pronto.')
+    setAssistantInput('')
+  }
 
   async function connect(e: FormEvent) {
     e.preventDefault()
@@ -176,9 +194,9 @@ export default function App() {
 
         <section className="two">
           <article className="panel assistant">
-            <div className="panelTitle"><div><Bot size={20}/><strong>Assistente NEXO</strong></div><span>Próxima etapa: IA</span></div>
-            <div className="heroMessage"><h2>O que você quer fazer hoje?</h2><p>Em breve você poderá consultar clientes, renovações e comandar ações daqui.</p></div>
-            <div className="composer"><input disabled placeholder="Ex.: Quem vence esta semana?" /><button disabled>Enviar</button></div>
+            <div className="panelTitle"><div><Bot size={20}/><strong>Assistente NEXO</strong></div><span>Ativo</span></div>
+            <div className="heroMessage"><h2>O que você quer fazer hoje?</h2><p>Converse naturalmente com o NEXO para consultar seu negócio ou preparar ações.</p>{assistantReply && <div className="assistantReply">{assistantReply}</div>}</div>
+            <form className="composer" onSubmit={askAssistant}><input value={assistantInput} onChange={e=>setAssistantInput(e.target.value)} placeholder="Ex.: Mostre meus produtos e serviços" /><button disabled={assistantLoading || !assistantInput.trim()}>{assistantLoading?'...':'Enviar'}</button></form>
           </article>
 
           <article className="panel">
