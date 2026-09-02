@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Activity, Bot, Boxes, CircleDollarSign, LogOut, MessageCircle, RefreshCcw, Settings2, Users, Wifi, WifiOff, X } from 'lucide-react'
+import { Activity, Bot, Boxes, Brain, CircleDollarSign, LogOut, MessageCircle, RefreshCcw, Settings2, Users, Wifi, WifiOff, X } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import TrainingPanel from './TrainingPanel'
 
 type ConnectResult = {
   ok?: boolean
@@ -69,6 +70,7 @@ export default function App() {
   const [connecting, setConnecting] = useState(false)
   const [wa, setWa] = useState<ConnectResult>({ state: 'not_configured', connected: false })
   const [connectError, setConnectError] = useState('')
+  const [activeView, setActiveView] = useState<'overview'|'training'>('overview')
 
   useEffect(() => {
     if (!supabase) { setBooting(false); return }
@@ -144,9 +146,10 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand"><div className="brandMark">N</div><div><strong>NEXO AI</strong><span>MVP 0.2</span></div></div>
         <nav>
-          <button className="active"><Activity size={18}/>Visão geral</button>
+          <button className={activeView==='overview'?'active':''} onClick={()=>setActiveView('overview')}><Activity size={18}/>Visão geral</button>
+          <button className={activeView==='training'?'active':''} onClick={()=>setActiveView('training')}><Brain size={18}/>Treinar NEXO</button>
           <button><Users size={18}/>Clientes</button>
-          <button><Boxes size={18}/>Produtos</button>
+          <button><Boxes size={18}/>Produtos e serviços</button>
           <button><MessageCircle size={18}/>WhatsApp</button>
           <button><Bot size={18}/>Automações</button>
         </nav>
@@ -166,6 +169,7 @@ export default function App() {
           </button>
         </header>
 
+        {activeView === 'training' ? <TrainingPanel /> : <>
         <section className="grid">
           {cards.map(({label,value,icon:Icon}) => <article className="card" key={label}><div className="cardIcon"><Icon size={20}/></div><div><span>{label}</span><strong>{value}</strong></div></article>)}
         </section>
@@ -193,6 +197,7 @@ export default function App() {
           <div className="panelTitle"><div><Activity size={20}/><strong>Atividade recente</strong></div><span>Webhook ativo</span></div>
           <div className="empty"><div className="pulse"></div><strong>Aguardando o primeiro evento</strong><p>Quando uma mensagem chegar pela Evolution, ela será registrada no NEXO.</p></div>
         </section>
+        </>}
       </main>
 
       {showConnect && <div className="modalBackdrop">
